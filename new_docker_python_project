@@ -1,0 +1,94 @@
+#!/usr/bin/env python3
+from __future__ import print_function
+
+# System
+import os
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------- #
+
+# Functions
+def save(path,
+    content,
+    encoding='utf8',
+    debug=False
+):
+    try:
+        data = None
+
+        if encoding:
+            data = content.encode('utf8')
+        else:
+            data = content
+
+        with open(path, 'wb') as file:
+            file.write(data)
+
+            return True
+    except Exception as e:
+        if debug:
+            print(e)
+
+        return False
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------- #
+
+# Defines
+DEFAULT_PYTHON_VERSION = '3.7-slim-buster'
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------- #
+
+# PATHS
+current_folder_path = os.getcwd()
+project_name = current_folder_path.split(os.path.sep)[-1]
+
+
+# ---------------------------------------------------------------------------------------------------------------------------------------- #
+
+# Ensure to be in correct folder
+input('\nPlease ensure you\'re in the correct folder.\nPress return/enter if yes.\nCurrent folder path: {}\n'.format(current_folder_path))
+
+dockerfile_path = os.path.join(current_folder_path, 'Dockerfile')
+build_file_path = os.path.join(current_folder_path, 'build')
+run_file_path = os.path.join(current_folder_path, 'run')
+
+src_folder_path = os.path.join(current_folder_path, 'src')
+main_py_path = os.path.join(src_folder_path, 'main.py')
+requirements_file_path = os.path.join(src_folder_path, 'requirements.txt')
+
+python_version = input('Enter desired python version\nDefault: {}\n>>> '.format(DEFAULT_PYTHON_VERSION)) or DEFAULT_PYTHON_VERSION
+
+DOCKERFILE='''
+# Set base image (host OS)
+FROM python:{}
+
+# Set the working directory in the container
+WORKDIR /code
+
+# venv
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+
+# Copy the content of the local src directory to the working directory
+COPY src/ .
+
+# Install dependencies:
+RUN . /opt/venv/bin/activate && pip install -r requirements.txt
+
+# Run the application:
+CMD . /opt/venv/bin/activate && exec python main.py
+'''.format(python_version).strip()
+
+save(dockerfile_path, DOCKERFILE)
+save(build_file_path, '#!/bin/sh\n\ndocker build -t {} .'.format(project_name))
+save(run_file_path, '#!/bin/sh\n\ndocker run {}'.format(project_name))
+
+os.system('chmod u+x {}'.format(build_file_path))  
+os.system('chmod u+x {}'.format(run_file_path))  
+
+os.makedirs(src_folder_path, exist_ok=True)
+save(main_py_path, '')
+save(requirements_file_path, '')
